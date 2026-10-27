@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, router, useSegments } from 'expo-router';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import migrations from '../drizzle/migrations';
 import { db } from '../db/client';
@@ -10,6 +10,20 @@ import { StatusBar } from 'expo-status-bar';
 function RootNavigation() {
   const { session, loading: authLoading } = useAuth();
   const { success: migrationSuccess, error: migrationError } = useMigrations(db, migrations);
+  const segments = useSegments();
+
+  // Redirección reactiva y protección de rutas
+  useEffect(() => {
+    if (authLoading) return;
+
+    const inAuthGroup = segments[0] === 'login' || segments[0] === 'registro';
+
+    if (!session && !inAuthGroup) {
+      router.replace('/login');
+    } else if (session && inAuthGroup) {
+      router.replace('/');
+    }
+  }, [session, authLoading, segments]);
 
   if (migrationError) {
     return (
@@ -20,7 +34,7 @@ function RootNavigation() {
     );
   }
 
-  if (authLoading || !migrationSuccess) {
+  if (authLoading || (!migrationSuccess && !migrationError)) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#0284c7" />
