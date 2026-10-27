@@ -1,9 +1,17 @@
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 const CHUNK_SIZE = 1800; // Por debajo del límite de 2048 bytes de iOS Keychain
 
 export const LargeSecureStore = {
   getItem: async (key: string): Promise<string | null> => {
+    if (Platform.OS === 'web') {
+      try {
+        return typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+      } catch {
+        return null;
+      }
+    }
     try {
       const rawChunks = await SecureStore.getItemAsync(`${key}_meta`);
       if (!rawChunks) {
@@ -22,6 +30,14 @@ export const LargeSecureStore = {
   },
 
   setItem: async (key: string, value: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      try {
+        if (typeof window !== 'undefined') localStorage.setItem(key, value);
+      } catch (e) {
+        console.error('Error al guardar en Web Storage:', e);
+      }
+      return;
+    }
     try {
       await LargeSecureStore.removeItem(key);
       const totalChunks = Math.ceil(value.length / CHUNK_SIZE);
@@ -36,6 +52,14 @@ export const LargeSecureStore = {
   },
 
   removeItem: async (key: string): Promise<void> => {
+    if (Platform.OS === 'web') {
+      try {
+        if (typeof window !== 'undefined') localStorage.removeItem(key);
+      } catch (e) {
+        console.error('Error al eliminar de Web Storage:', e);
+      }
+      return;
+    }
     try {
       const rawChunks = await SecureStore.getItemAsync(`${key}_meta`);
       if (rawChunks) {
